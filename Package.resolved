@@ -55,6 +55,33 @@
       }
     },
     {
+      "identity" : "bluecryptor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/BlueCryptor.git",
+      "state" : {
+        "revision" : "cec97c24b111351e70e448972a7d3fe68a756d6d",
+        "version" : "2.0.2"
+      }
+    },
+    {
+      "identity" : "blueecc",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/BlueECC.git",
+      "state" : {
+        "revision" : "1485268a54f8135435a825a855e733f026fa6cc8",
+        "version" : "1.2.201"
+      }
+    },
+    {
+      "identity" : "bluersa",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/BlueRSA.git",
+      "state" : {
+        "revision" : "440f78db26d8bb073f29590f1c7bd31004da09ae",
+        "version" : "1.0.201"
+      }
+    },
+    {
       "identity" : "cfwebrepositoryprovider",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/chocoford/CFWebRepositoryProvider.git",
@@ -69,7 +96,7 @@
       "location" : "https://github.com/chocoford/ChocofordUI.git",
       "state" : {
         "branch" : "main",
-        "revision" : "5f5d947238df0c52d47926f4139c105701ceffea"
+        "revision" : "ec15902e0e4a17eb98298af38f66cdb6780e2ff2"
       }
     },
     {
@@ -136,12 +163,21 @@
       }
     },
     {
-      "identity" : "jwtdecode.swift",
+      "identity" : "kituracontracts",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/auth0/JWTDecode.swift.git",
+      "location" : "https://github.com/Kitura/KituraContracts.git",
       "state" : {
-        "revision" : "7918a343e674c7707e0be120bb4e21d679be014c",
-        "version" : "3.0.1"
+        "revision" : "6edf7ac3dd2b3a2c61284778d430bbad7d8a6f23",
+        "version" : "2.0.1"
+      }
+    },
+    {
+      "identity" : "loggerapi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/LoggerAPI.git",
+      "state" : {
+        "revision" : "4e6b45e850ffa275e8e26a24c6454fd709d5b6ac",
+        "version" : "2.0.0"
       }
     },
     {
@@ -298,6 +334,15 @@
       }
     },
     {
+      "identity" : "swift-jwt",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/Swift-JWT.git",
+      "state" : {
+        "revision" : "f68ec28fbd90a651597e9e825ea7f315f8d52a1f",
+        "version" : "4.0.1"
+      }
+    },
+    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
@@ -429,7 +474,7 @@
       "location" : "https://github.com/chocoford/TrickleKit.git",
       "state" : {
         "branch" : "main",
-        "revision" : "8ef14ce0db770c8e70688614dfe3b85348037d50"
+        "revision" : "bff1e4e902eaacd02ca226842105b97647154a23"
       }
     },
     {
@@ -446,8 +491,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/websocket-kit.git",
       "state" : {
-        "revision" : "0ba2f8a548e8c67e75e36069830b6ee1e2222e41",
-        "version" : "2.12.1"
+        "revision" : "2ec14506d5f8199926906dc5a620ac22b147db86",
+        "version" : "2.13.0"
       }
     }
   ],

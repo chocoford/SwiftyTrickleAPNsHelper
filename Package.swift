@@ -22,7 +22,7 @@ let package = Package(
                 .product(name: "FluentSQLiteDriver", package: "fluent-sqlite-driver"),
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "APNS", package: "apns"),
-                .product(name: "TrickleKit", package: "TrickleKit")
+                .product(name: "TrickleCore", package: "TrickleKit")
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of

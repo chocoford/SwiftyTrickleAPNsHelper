@@ -7,7 +7,7 @@
 
 import Fluent
 import Vapor
-import TrickleKit
+import TrickleCore
 
 struct UserController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {

@@ -13,14 +13,8 @@ public func configure(_ app: Application) async throws {
     // Configure APNS using JWT authentication.
     app.apns.configuration = try .init(
         authenticationMethod: .jwt(
-            key: .private(pem: """
------BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgtJE6FyzaK4G+qdjN
-hS4o65GqrIk+47uU7l9rSl/hXZqhRANCAASnfEkUTKz4T2hnXDs3n5Sp7hXM1GJe
-RmPaSZxwPsYoRoIIY2hpQhOn/VbgAv/B3K92Or+BPpO2elo3jIH9MJ1E
------END PRIVATE KEY-----
-"""),
-            keyIdentifier: "BHPU8XMU7C",
+            key: .private(pem: ProcessInfo.processInfo.environment["APNS_PEM"] ?? ""),
+            keyIdentifier: .init(string: ProcessInfo.processInfo.environment["APNS_KEY_ID"] ?? ""),
             teamIdentifier: "96RJ77RT4T"
         ),
         topic: "com.chocoford.SwiftyTrickle-Debug",

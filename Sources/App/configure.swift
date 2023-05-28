@@ -17,7 +17,7 @@ public func configure(_ app: Application) async throws {
             keyIdentifier: .init(string: ProcessInfo.processInfo.environment["APNS_KEY_ID"] ?? ""),
             teamIdentifier: "96RJ77RT4T"
         ),
-        topic: "com.chocoford.SwiftyTrickle-Debug",
+        topic: ProcessInfo.processInfo.environment["APNS_TOPIC"] ?? "com.chocoford.SwiftyTrickle",
         environment: .sandbox
     )
     

@@ -8,7 +8,7 @@
 import Foundation
 import Vapor
 import TrickleCore
-import TrickleSocket
+import TrickleSocketSupport
 
 class SocketForte {
     static var shared: SocketForte = .init()

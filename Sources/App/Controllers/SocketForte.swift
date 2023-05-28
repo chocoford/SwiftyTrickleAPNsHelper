@@ -13,8 +13,9 @@ import TrickleSocketSupport
 class SocketForte {
     static var shared: SocketForte = .init()
 
-    var usersSocketPool: [String : WebSocket] = [:]
+    var usersSocketPool: [UserInfo.UserData.ID : WebSocket] = [:]
     var usersEnabledStates: [UserInfo.UserData.ID : [WorkspaceData.ID : Bool]] = [:]
+    var timers: [UserInfo.UserData.ID : Timer] = [:]
     
     public func register(req: Request, userInfo payload: RegisterPayload) async throws {
         if let ws = usersSocketPool[payload.userID] {
@@ -73,10 +74,12 @@ class SocketForte {
                         ] as [String : Any]
                     ].data()
                     guard let helloText = String(data: helloData, encoding: .utf8) else { return }
-                    _ = DispatchQueue(label: "hello_interval").schedule(after: .init(.now()), interval: .seconds(180)) {
+                    
+                    let timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in
                         ws.send(helloText)
                     }
-                   
+                    self.timers[payload.userID] = timer
+                 
                     for workspaceInfo in payload.userWorkspaces {
                         // join room
                         let joinRoomData = try [
@@ -180,6 +183,7 @@ class SocketForte {
             } else {
                 // close
             }
+            self.timers.removeValue(forKey: payload.userID)?.invalidate()
         }
         
         // on message

@@ -95,7 +95,7 @@ struct RegisterPayload: Codable {
         case live
     }
     
-    struct UserWorkspaceRepresentable: Codable {
+    struct UserWorkspaceRepresentable: Codable, Equatable {
         let workspaceID: String
         let memberID: String
     }

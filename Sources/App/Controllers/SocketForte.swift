@@ -15,9 +15,11 @@ class SocketForte {
 
     var usersSocketPool: [UserInfo.UserData.ID : WebSocket] = [:]
     var usersEnabledStates: [UserInfo.UserData.ID : [WorkspaceData.ID : Bool]] = [:]
+    var usersInfo: [UserInfo.UserData.ID : [RegisterPayload.UserWorkspaceRepresentable]] = [:]
     var timers: [UserInfo.UserData.ID : Timer] = [:]
     
     public func register(req: Request, userInfo payload: RegisterPayload) async throws {
+        usersInfo.updateValue(payload.userWorkspaces, forKey: payload.userID)
         if let ws = usersSocketPool[payload.userID] {
             for workspaceInfo in payload.userWorkspaces {
                 // join room
@@ -145,6 +147,11 @@ class SocketForte {
     }
     public func unmuteWorkspace(userID: UserInfo.UserData.ID, token: String,
                                 workspaceInfo: RegisterPayload.UserWorkspaceRepresentable) {
+        if let index = usersInfo[userID]?.firstIndex(where: {$0 == workspaceInfo}) {
+            usersInfo[userID]?[index] = workspaceInfo
+        } else {
+            usersInfo[userID]?.append(workspaceInfo)
+        }
         do {
             // join room
             let data = try [
@@ -204,10 +211,12 @@ class SocketForte {
                                                 }
                                                 break
                                             }
-                                            _ = req.apns.send(
-                                                .init(title: "Swifty Trickle", subtitle: "\(event.eventData.trickleInfo.authorMemberInfo.name) post a new trickle."),
-                                                to: payload.deviceToken
-                                            )
+                                            if code.value.trigger.trickleTraceID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
+                                                _ = req.apns.send(
+                                                    .init(title: "Swifty Trickle", subtitle: "\(event.eventData.trickleInfo.authorMemberInfo.name) post a new trickle."),
+                                                    to: payload.deviceToken
+                                                )
+                                            }
                                         default:
                                             break
                                     }
@@ -221,10 +230,12 @@ class SocketForte {
                                                 }
                                                 break
                                             }
-                                            _ = req.apns.send(
-                                                .init(title: "Swifty Trickle", subtitle: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to you."),
-                                                to: payload.deviceToken
-                                            )
+                                            if code.value.trigger.trickleTraceID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
+                                                _ = req.apns.send(
+                                                    .init(title: "Swifty Trickle", subtitle: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to you."),
+                                                    to: payload.deviceToken
+                                                )
+                                            }
                                         default:
                                             break
                                     }

@@ -211,7 +211,7 @@ class SocketForte {
                                                 }
                                                 break
                                             }
-                                            if code.value.trigger.trickleTraceID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
+                                            if event.eventData.trickleInfo.authorMemberInfo.memberID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
                                                 _ = req.apns.send(
                                                     .init(title: "Swifty Trickle", subtitle: "\(event.eventData.trickleInfo.authorMemberInfo.name) post a new trickle."),
                                                     to: payload.deviceToken
@@ -230,7 +230,7 @@ class SocketForte {
                                                 }
                                                 break
                                             }
-                                            if code.value.trigger.trickleTraceID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
+                                            if event.eventData.commentInfo.commentAuthor.memberID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
                                                 _ = req.apns.send(
                                                     .init(title: "Swifty Trickle", subtitle: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to you."),
                                                     to: payload.deviceToken

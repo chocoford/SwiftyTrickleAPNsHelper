@@ -18,7 +18,7 @@ public func configure(_ app: Application) async throws {
             teamIdentifier: "96RJ77RT4T"
         ),
         topic: ProcessInfo.processInfo.environment["APNS_TOPIC"] ?? "com.chocoford.SwiftyTrickle",
-        environment: .sandbox
+        environment: ProcessInfo.processInfo.environment["APNS_ENV"] == "production" ? .production : .sandbox
     )
     
     app.databases.use(.sqlite(.memory), as: .sqlite)

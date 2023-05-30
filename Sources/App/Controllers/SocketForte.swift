@@ -208,10 +208,7 @@ class SocketForte {
                                     "isVisible": "false",
                                 ] as [String : Any]
                             ].data()
-                            guard let helloText = String(data: helloData, encoding: .utf8) else {
-                                print("invalid helloData")
-                                break
-                            }
+                            guard let helloText = String(data: helloData, encoding: .utf8) else { break }
                             let job = Jobs.add(interval: (configs?.helloInterval ?? 180).seconds) {
                                 ws.send(helloText)
                             }
@@ -242,14 +239,10 @@ class SocketForte {
                                 print("invalid helloData")
                                 break
                             }
-//                            DispatchQueue.main.async {
-//                                let timer = Timer.scheduledTimer(withTimeInterval: Double(configs?.roomStatusHelloInterval ?? 180), repeats: true) { _ in
                             let job = Jobs.add(interval: (configs?.roomStatusHelloInterval ?? 180).seconds) {
-                                print("join roomStatus")
                                 ws.send(roomStatusText)
                             }
                             self.devicesTimers[payload.deviceToken]?.roomStatus[workspaceID] = job
-//                            }
                         } catch {
                             dump(error)
                         }
@@ -288,7 +281,6 @@ extension SocketForte {
             "meta": ["version": "Swifty Trickle Push Notification Helper"]
         ].data()
         guard let joinRoomText = String(data: joinRoomData, encoding: .utf8) else { return }
-        print(joinRoomText)
         ws?.send(joinRoomText)
         
         self.devicesEnabledStates[deviceToken]?.updateValue(true, forKey: workspaceInfo.workspaceID)
@@ -308,7 +300,6 @@ extension SocketForte {
             ] as [String : Any],
         ].data()
         guard let leaveRoomText = String(data: data, encoding: .utf8) else { return }
-        ws?.send(leaveRoomText)
         self.devicesEnabledStates[deviceToken]?
             .updateValue(false, forKey: workspaceInfo.workspaceID)
         devicesWorkspacesInfo[deviceToken]?.removeAll(where: {$0.workspaceID == workspaceInfo.workspaceID})
@@ -322,7 +313,6 @@ extension SocketForte {
             "authorization": "Bearer \(trickleToken)"
         ].data()
         guard let connectText = String(data: data, encoding: .utf8) else { return }
-        print(connectText)
         ws.send(connectText)
     }
 }

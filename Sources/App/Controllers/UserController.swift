@@ -81,8 +81,8 @@ struct UserController: RouteCollection {
     }
     
     func registerAll(req: Request) async throws -> HTTPStatus {
-        print(req.headers.description)
-        guard req.remoteAddress?.ipAddress == "127.0.0.1" else { return .badGateway }
+        // This is offered by nginx
+        guard req.headers.first(name: "X-Real-IP") == "127.0.0.1" else { return .badGateway }
 
         let devices = try await UserDevice
             .query(on: req.db)
@@ -148,7 +148,7 @@ struct UserController: RouteCollection {
     }
     
     func broadcast(req: Request) async throws -> HTTPStatus {
-        guard req.remoteAddress?.ipAddress == "127.0.0.1" else { return .badGateway }
+        guard req.headers.first(name: "X-Real-IP") == "127.0.0.1" else { return .badGateway }
         for userDevice in try await UserDevice.query(on: req.db).all() {
             if let deviceToken = userDevice.id {
                 _ = req.apns.send(.init(title: "Swifty Trickle",

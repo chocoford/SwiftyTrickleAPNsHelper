@@ -27,37 +27,32 @@ class SocketForte {
     
     public func register(req: Request, userInfo payload: RegisterPayload) async throws {
         if devicesSocketPool[payload.deviceToken] != nil {
-            for workspaceInfo in payload.userWorkspaces {
-                // join room
-                try joinWorkspace(trickleToken: payload.trickleToken,
-                                        deviceToken: payload.deviceToken,
-                                        workspaceInfo: workspaceInfo)
-            }
-        } else {
-            devicesWorkspacesInfo[payload.deviceToken] = []
-            devicesEnabledStates[payload.deviceToken] = [:]
-            let urlString: String
-            switch payload.env {
-                case .dev:
-                    urlString = "devwsapi.trickle.so"
-                case .test:
-                    urlString = "testwsapi.trickle.so"
-                case .live:
-                    urlString = "wsapi.trickle.so"
-            }
-            try await WebSocket.connect(to: "wss://\(urlString)?authToken=Bearer%20\(payload.trickleToken)",
-                                        on: req.eventLoop) { ws in
-                do {
-                    self.configWebsocket(ws, req: req, userInfo: payload)
-                    
-                    // connect to server
-                    try self.connectToServer(ws, userID: payload.userID,
-                                                   trickleToken: payload.trickleToken,
-                                                   deviceToken: payload.deviceToken)
-
-                } catch {
-                    dump(error)
-                }
+            try await closeSocket(deviceToken: payload.deviceToken)
+        }
+        
+        devicesWorkspacesInfo[payload.deviceToken] = []
+        devicesEnabledStates[payload.deviceToken] = [:]
+        let urlString: String
+        switch payload.env {
+            case .dev:
+                urlString = "devwsapi.trickle.so"
+            case .test:
+                urlString = "testwsapi.trickle.so"
+            case .live:
+                urlString = "wsapi.trickle.so"
+        }
+        try await WebSocket.connect(to: "wss://\(urlString)?authToken=Bearer%20\(payload.trickleToken)",
+                                    on: req.eventLoop) { ws in
+            do {
+                self.configWebsocket(ws, req: req, userInfo: payload)
+                
+                // connect to server
+                try self.connectToServer(ws, userID: payload.userID,
+                                         trickleToken: payload.trickleToken,
+                                         deviceToken: payload.deviceToken)
+                
+            } catch {
+                dump(error)
             }
         }
     }

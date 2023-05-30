@@ -366,7 +366,7 @@
       "location" : "https://github.com/apple/swift-markdown.git",
       "state" : {
         "branch" : "main",
-        "revision" : "40f7f858e01a6ca512d96088087ffa861861eee5"
+        "revision" : "8ea3072e4ba2a2aa6395d529fbfc188c838c2dba"
       }
     },
     {
@@ -483,7 +483,7 @@
       "location" : "https://github.com/chocoford/TrickleKit.git",
       "state" : {
         "branch" : "main",
-        "revision" : "79c5f0cb847fee6eceed8aa2c8faa1d4fea43736"
+        "revision" : "bb8f7021b55442a62be2af20d33fa3be82ef5ec6"
       }
     },
     {

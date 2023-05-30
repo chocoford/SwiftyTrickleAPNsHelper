@@ -33,6 +33,7 @@ public func configure(_ app: Application) async throws {
     DispatchQueue.main.async {
         print("timer scheduled")
         let _ = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            print("timer fired")
             Task {
                 //            _ = try? await app.client.post("http://127.0.0.1/users/broadcast")
                 _ = try? await app.client.post("http://127.0.0.1/users/register_all")

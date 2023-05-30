@@ -31,7 +31,7 @@ public func configure(_ app: Application) async throws {
     try routes(app)
     
 
-    DispatchQueue.main.asyncAfter(deadline: .now().advanced(by: .seconds(5))) {
+    Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
         Task {
 //            _ = try? await app.client.post("http://127.0.0.1/users/broadcast")
             _ = try? await app.client.post("http://127.0.0.1/users/register_all")

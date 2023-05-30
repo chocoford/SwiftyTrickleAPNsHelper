@@ -9,6 +9,7 @@ import Foundation
 import Vapor
 import TrickleCore
 import TrickleSocketSupport
+import Jobs
 
 class SocketForte {
     static var shared: SocketForte = .init()
@@ -18,8 +19,8 @@ class SocketForte {
     var devicesWorkspacesInfo: [String : [RegisterPayload.UserWorkspaceRepresentable]] = [:]
     
     struct DeviceTimers {
-        var helloInterval: Timer? = nil
-        var roomStatus: [WorkspaceData.ID : Timer] = [:]
+        var helloInterval: Job? = nil
+        var roomStatus: [WorkspaceData.ID : Job] = [:]
     }
     var devicesTimers: [String : DeviceTimers] = [:]
     
@@ -67,9 +68,9 @@ class SocketForte {
             try leaveWorkspace(deviceToken: deviceToken, workspaceInfo: workspace)
         }
         
-        devicesTimers[deviceToken]?.helloInterval?.invalidate()
+        devicesTimers[deviceToken]?.helloInterval?.stop()
         devicesTimers[deviceToken]?.roomStatus.values.forEach({
-            $0.invalidate()
+            $0.stop()
         })
         devicesTimers.removeValue(forKey: deviceToken)
         _ = try await devicesSocketPool[deviceToken]?.close()
@@ -120,9 +121,9 @@ class SocketForte {
                 // close
             }
             
-            self.devicesTimers[payload.deviceToken]?.helloInterval?.invalidate()
+            self.devicesTimers[payload.deviceToken]?.helloInterval?.stop()
             self.devicesTimers[payload.deviceToken]?.roomStatus.values.forEach({
-                $0.invalidate()
+                $0.stop()
             })
             self.devicesTimers.removeValue(forKey: payload.deviceToken)
         }
@@ -216,13 +217,10 @@ class SocketForte {
                                 print("invalid helloData")
                                 break
                             }
-                            DispatchQueue.main.async {
-                                let timer = Timer.scheduledTimer(withTimeInterval: Double(configs?.helloInterval ?? 180), repeats: true) { _ in
-                                    print("send hello", helloText)
-                                    ws.send(helloText)
-                                }
-                                self.devicesTimers[payload.deviceToken]?.helloInterval = timer
+                            let job = Jobs.add(interval: (configs?.helloInterval ?? 180).seconds) {
+                                ws.send(helloText)
                             }
+                            self.devicesTimers[payload.deviceToken]?.helloInterval = job
                         } catch {
                             dump(error)
                         }
@@ -249,13 +247,14 @@ class SocketForte {
                                 print("invalid helloData")
                                 break
                             }
-                            DispatchQueue.main.async {
-                                let timer = Timer.scheduledTimer(withTimeInterval: Double(configs?.roomStatusHelloInterval ?? 180), repeats: true) { _ in
-                                    print("join roomStatus")
-                                    ws.send(roomStatusText)
-                                }
-                                self.devicesTimers[payload.deviceToken]?.roomStatus[workspaceID] = timer
+//                            DispatchQueue.main.async {
+//                                let timer = Timer.scheduledTimer(withTimeInterval: Double(configs?.roomStatusHelloInterval ?? 180), repeats: true) { _ in
+                            let job = Jobs.add(interval: (configs?.roomStatusHelloInterval ?? 180).seconds) {
+                                print("join roomStatus")
+                                ws.send(roomStatusText)
                             }
+                            self.devicesTimers[payload.deviceToken]?.roomStatus[workspaceID] = job
+//                            }
                         } catch {
                             dump(error)
                         }

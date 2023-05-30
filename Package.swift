@@ -12,7 +12,8 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent.git", from: "4.8.0"),
         .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/apns.git", from: "3.0.0"),
-        .package(url: "https://github.com/chocoford/TrickleKit.git", branch: "main")
+        .package(url: "https://github.com/chocoford/TrickleKit.git", branch: "main"),
+        .package(url: "https://github.com/BrettRToomey/Jobs.git", from: "1.1.1")
     ],
     targets: [
         .executableTarget(
@@ -22,7 +23,8 @@ let package = Package(
                 .product(name: "FluentSQLiteDriver", package: "fluent-sqlite-driver"),
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "APNS", package: "apns"),
-                .product(name: "TrickleSocketSupport", package: "TrickleKit")
+                .product(name: "TrickleSocketSupport", package: "TrickleKit"),
+                .product(name: "Jobs", package: "Jobs")
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of

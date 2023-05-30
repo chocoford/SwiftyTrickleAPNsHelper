@@ -30,11 +30,12 @@ public func configure(_ app: Application) async throws {
     // register routes
     try routes(app)
     
-
-    Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
-        Task {
-//            _ = try? await app.client.post("http://127.0.0.1/users/broadcast")
-            _ = try? await app.client.post("http://127.0.0.1/users/register_all")
+    DispatchQueue.main.async {
+        Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            Task {
+                //            _ = try? await app.client.post("http://127.0.0.1/users/broadcast")
+                _ = try? await app.client.post("http://127.0.0.1/users/register_all")
+            }
         }
     }
     

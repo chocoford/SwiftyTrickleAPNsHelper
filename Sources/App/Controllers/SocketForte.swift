@@ -13,35 +13,28 @@ import TrickleSocketSupport
 class SocketForte {
     static var shared: SocketForte = .init()
 
-    var usersSocketPool: [UserInfo.UserData.ID : WebSocket] = [:]
-    var usersEnabledStates: [UserInfo.UserData.ID : [WorkspaceData.ID : Bool]] = [:]
-    var usersInfo: [UserInfo.UserData.ID : [RegisterPayload.UserWorkspaceRepresentable]] = [:]
-    var timers: [UserInfo.UserData.ID : Timer] = [:]
+    var devicesSocketPool: [String : WebSocket] = [:]
+    var devicesEnabledStates: [String : [WorkspaceData.ID : Bool]] = [:]
+    var devicesWorkspacesInfo: [String : [RegisterPayload.UserWorkspaceRepresentable]] = [:]
+    
+    struct DeviceTimers {
+        var helloInterval: Timer? = nil
+        var roomStatus: [WorkspaceData.ID : Timer] = [:]
+    }
+    var devicesTimers: [String : DeviceTimers] = [:]
+    
     
     public func register(req: Request, userInfo payload: RegisterPayload) async throws {
-        usersInfo.updateValue(payload.userWorkspaces, forKey: payload.userID)
-        if let ws = usersSocketPool[payload.userID] {
+        if devicesSocketPool[payload.deviceToken] != nil {
             for workspaceInfo in payload.userWorkspaces {
                 // join room
-                let joinRoomData = try [
-                    "id": UUID().uuidString,
-                    "action" : "message",
-                    "path": "join_room",
-                    "data" : [
-                        "roomId": "workspace:\(workspaceInfo.workspaceID)",
-                        "memberId": workspaceInfo.memberID,
-                        "status": [ "mode" : "offline"],
-                    ] as [String : Any],
-                    "authorization" : payload.trickleToken,
-                    "meta": ["version": "Swifty Trickle Push Notification Helper"]
-                ].data()
-                guard let joinRoomText = String(data: joinRoomData, encoding: .utf8) else { continue }
-                try await ws.send(joinRoomText)
-                
-                self.usersEnabledStates[payload.userID]?.updateValue(true, forKey: workspaceInfo.workspaceID)
+                try joinWorkspace(trickleToken: payload.trickleToken,
+                                        deviceToken: payload.deviceToken,
+                                        workspaceInfo: workspaceInfo)
             }
         } else {
-            usersEnabledStates[payload.userID] = [:]
+            devicesWorkspacesInfo[payload.deviceToken] = []
+            devicesEnabledStates[payload.deviceToken] = [:]
             let urlString: String
             switch payload.env {
                 case .dev:
@@ -51,56 +44,15 @@ class SocketForte {
                 case .live:
                     urlString = "wsapi.trickle.so"
             }
-            try await WebSocket.connect(to: "wss://\(urlString)?authToken=Bearer%20\(payload.trickleToken)", on: req.eventLoop) { ws in
+            try await WebSocket.connect(to: "wss://\(urlString)?authToken=Bearer%20\(payload.trickleToken)",
+                                        on: req.eventLoop) { ws in
                 do {
                     self.configWebsocket(ws, req: req, userInfo: payload)
                     
                     // connect to server
-                    let data = try [
-                        "id": UUID().uuidString,
-                        "action": "message",
-                        "path": "connect",
-                        "authorization": payload.trickleToken
-                    ].data()
-                    guard let connectText = String(data: data, encoding: .utf8) else { return }
-                    ws.send(connectText)
-                    
-                    // hello interval
-                    let helloData = try [
-                        "id": UUID().uuidString,
-                        "action" : "message",
-                        "path": "connect_hello",
-                        "data" : [
-                            "connId": payload.userID,
-                            "isVisible": true
-                        ] as [String : Any]
-                    ].data()
-                    guard let helloText = String(data: helloData, encoding: .utf8) else { return }
-                    
-                    let timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { _ in
-                        ws.send(helloText)
-                    }
-                    self.timers[payload.userID] = timer
-                 
-                    for workspaceInfo in payload.userWorkspaces {
-                        // join room
-                        let joinRoomData = try [
-                            "id": UUID().uuidString,
-                            "action" : "message",
-                            "path": "join_room",
-                            "data" : [
-                                "roomId": "workspace:\(workspaceInfo.workspaceID)",
-                                "memberId": workspaceInfo.memberID,
-                                "status": [ "mode" : "offline"],
-                            ] as [String : Any],
-                            "authorization" : payload.trickleToken,
-                            "meta": ["version": "Swifty Trickle Push Notification Helper"]
-                        ].data()
-                        guard let joinRoomText = String(data: joinRoomData, encoding: .utf8) else { continue }
-                        ws.send(joinRoomText)
-                        
-                        self.usersEnabledStates[payload.userID]?.updateValue(true, forKey: workspaceInfo.workspaceID)
-                    }
+                    try self.connectToServer(ws, userID: payload.userID,
+                                                   trickleToken: payload.trickleToken,
+                                                   deviceToken: payload.deviceToken)
 
                 } catch {
                     dump(error)
@@ -109,143 +61,274 @@ class SocketForte {
         }
     }
 
-    public func closeSocket(userID: UserInfo.UserData.ID) {
-        _ = usersSocketPool[userID]?.close()
-        usersSocketPool.removeValue(forKey: userID)
+    public func closeSocket(deviceToken: String) async throws {
+        print("close socket.")
+        for workspace in devicesWorkspacesInfo[deviceToken] ?? [] {
+            try leaveWorkspace(deviceToken: deviceToken, workspaceInfo: workspace)
+        }
+        
+        devicesTimers[deviceToken]?.helloInterval?.invalidate()
+        devicesTimers[deviceToken]?.roomStatus.values.forEach({
+            $0.invalidate()
+        })
+        devicesTimers.removeValue(forKey: deviceToken)
+        _ = try await devicesSocketPool[deviceToken]?.close()
+        devicesSocketPool.removeValue(forKey: deviceToken)
     }
 
-    public func isSocketActive(userID: UserInfo.UserData.ID) -> Bool {
-        return usersSocketPool[userID] != nil
+    public func isSocketActive(deviceToken: String) -> Bool {
+        return devicesSocketPool[deviceToken] != nil
     }
     
-    
-//    public func muteWorkspace(userID: UserInfo.UserData.ID, workspaceID: WorkspaceData.ID) {
-//        if let workspaceInfo = payload.userWorkspaces.first(where: {$0.workspaceID == workspaceID}) {
-//            muteWorkspace(userID: userID, workspaceID: workspaceInfo)
-//        }
-//    }
-    public func muteWorkspace(userID: UserInfo.UserData.ID, workspaceInfo: RegisterPayload.UserWorkspaceRepresentable) {
+
+    public func muteWorkspace(deviceToken: String, workspaceID: String) {
+        guard let workspaceInfo = devicesWorkspacesInfo[deviceToken]?.first(where: {$0.workspaceID == workspaceID}) else {
+            return
+        }
         do {
             // leave room
-            let data = try [
-                "id": UUID().uuidString,
-                "action" : "message",
-                "path": "leave_room",
-                "data" : [
-                    "roomId": "workspace:\(workspaceInfo.workspaceID)",
-                    "memberId": workspaceInfo.memberID,
-                    "status": [ "mode" : "offline"],
-                ] as [String : Any],
-            ].data()
-            guard let leaveRoomText = String(data: data, encoding: .utf8) else { return }
-            let ws = usersSocketPool[userID]
-            ws?.send(leaveRoomText)
-            self.usersEnabledStates[userID]?.updateValue(false, forKey: workspaceInfo.workspaceID)
+            try  leaveWorkspace(deviceToken: deviceToken, workspaceInfo: workspaceInfo)
         } catch {
             dump(error)
         }
     }
-    public func unmuteWorkspace(userID: UserInfo.UserData.ID, token: String,
-                                workspaceInfo: RegisterPayload.UserWorkspaceRepresentable) {
-        if let index = usersInfo[userID]?.firstIndex(where: {$0 == workspaceInfo}) {
-            usersInfo[userID]?[index] = workspaceInfo
-        } else {
-            usersInfo[userID]?.append(workspaceInfo)
-        }
+    
+    public func unmuteWorkspace(deviceToken: String, token: String, workspaceInfo: RegisterPayload.UserWorkspaceRepresentable) {
         do {
             // join room
-            let data = try [
-                "id": UUID().uuidString,
-                "action" : "message",
-                "path": "join_room",
-                "data" : [
-                    "roomId": "workspace:\(workspaceInfo.workspaceID)",
-                    "memberId": workspaceInfo.memberID,
-                    "status": [ "mode" : "offline"],
-                ] as [String : Any],
-                "authorization" : token,
-                "meta": ["version": "Swifty Trickle Push Notification Helper"]
-            ].data()
-            guard let connectText = String(data: data, encoding: .utf8) else { return }
-            let ws = usersSocketPool[userID]
-            ws?.send(connectText)
-            self.usersEnabledStates[userID]?.updateValue(true, forKey: workspaceInfo.workspaceID)
+            try  joinWorkspace(trickleToken: token,
+                                    deviceToken: deviceToken,
+                                    workspaceInfo: workspaceInfo)
         } catch {
             dump(error)
         }
     }
     private func configWebsocket(_ ws: WebSocket, req: Request, userInfo payload: RegisterPayload) {
-        usersSocketPool.updateValue(ws, forKey: payload.userID)
+        devicesSocketPool.updateValue(ws, forKey: payload.deviceToken)
         // on close
         ws.onClose.whenComplete { _ in
-            if self.usersSocketPool[payload.userID] != nil {
+            if self.devicesSocketPool[payload.deviceToken] != nil {
                 // reestablish
                 Task {
                     do {
                         try await self.register(req: req, userInfo: payload)
                     } catch {
-                        self.usersSocketPool.removeValue(forKey: payload.userID)
+                        self.devicesSocketPool.removeValue(forKey: payload.deviceToken)
                     }
                 }
             } else {
                 // close
             }
-            self.timers.removeValue(forKey: payload.userID)?.invalidate()
+            
+            self.devicesTimers[payload.deviceToken]?.helloInterval?.invalidate()
+            self.devicesTimers[payload.deviceToken]?.roomStatus.values.forEach({
+                $0.invalidate()
+            })
+            self.devicesTimers.removeValue(forKey: payload.deviceToken)
         }
         
         // on message
         ws.onText { socket, text in
+            var configs: ConnectData? = nil
             // changeNotifyHandler
             TrickleSocketMessageHandler.shared.handleMessage(text) { event in
-                if case .changeNotify(let data) = event {
-                    for data in data.data ?? [] {
-                        for code in data.codes {
-                            switch code.value.latestChangeEvent {
-                                case .trickle(let event):
-                                    switch event {
-                                        case .created(let event):
-                                            guard self.usersEnabledStates[payload.userID]?[event.eventData.workspaceID] == true else {
-                                                if let workspaceInfo = payload.userWorkspaces.first(where: {$0.workspaceID == event.eventData.workspaceID}) {
-                                                    self.muteWorkspace(userID: payload.userID,
-                                                                  workspaceInfo: workspaceInfo)
+                switch event {
+                    case .changeNotify(let data):
+                        for data in data.data ?? [] {
+                            for code in data.codes {
+                                switch code.value.latestChangeEvent {
+                                    case .trickle(let event):
+                                        switch event {
+                                            case .created(let event):
+                                                guard self.devicesEnabledStates[payload.deviceToken]?[event.eventData.workspaceID] == true else {
+                                                    if payload.userWorkspaces.contains(where: {$0.workspaceID == event.eventData.workspaceID}) {
+                                                        Task {
+                                                            self.muteWorkspace(deviceToken: payload.deviceToken, workspaceID: event.eventData.workspaceID)
+                                                        }
+                                                    }
+                                                    break
                                                 }
-                                                break
-                                            }
-                                            if event.eventData.trickleInfo.authorMemberInfo.memberID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
-                                                _ = req.apns.send(
-                                                    .init(title: "Swifty Trickle", subtitle: "\(event.eventData.trickleInfo.authorMemberInfo.name) post a new trickle."),
-                                                    to: payload.deviceToken
-                                                )
-                                            }
-                                        default:
-                                            break
-                                    }
-                                case .comment(let event):
-                                    switch event {
-                                        case .created(let event):
-                                            guard self.usersEnabledStates[payload.userID]?[event.eventData.workspaceID] == true else {
-                                                if let workspaceInfo = payload.userWorkspaces.first(where: {$0.workspaceID == event.eventData.workspaceID}) {
-                                                    self.muteWorkspace(userID: payload.userID,
-                                                                  workspaceInfo: workspaceInfo)
+                                                if event.eventData.trickleInfo.authorMemberInfo.memberID != payload.userWorkspaces.first(where: {
+                                                    $0.workspaceID == event.eventData.workspaceID
+                                                })?.memberID {
+                                                    _ = req.apns.send(
+                                                        .init(title: "Swifty Trickle", body: "\(event.eventData.trickleInfo.authorMemberInfo.name) post a new trickle."),
+                                                        to: payload.deviceToken
+                                                    )
                                                 }
+                                            default:
                                                 break
-                                            }
-                                            if event.eventData.commentInfo.commentAuthor.memberID != self.usersInfo[payload.userID]?.first(where: {$0.workspaceID == event.eventData.workspaceID})?.memberID {
-                                                _ = req.apns.send(
-                                                    .init(title: "Swifty Trickle", subtitle: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to you."),
-                                                    to: payload.deviceToken
-                                                )
-                                            }
-                                        default:
-                                            break
-                                    }
-                                default:
-                                    break
+                                        }
+                                    case .comment(let event):
+                                        switch event {
+                                            case .created(let event):
+                                                guard self.devicesEnabledStates[payload.deviceToken]?[event.eventData.workspaceID] == true else {
+                                                    if payload.userWorkspaces.contains(where: {$0.workspaceID == event.eventData.workspaceID}) {
+                                                        Task {
+                                                           self.muteWorkspace(deviceToken: payload.deviceToken,
+                                                                                    workspaceID: event.eventData.workspaceID)
+                                                        }
+                                                    }
+                                                    break
+                                                }
+                                                if event.eventData.commentInfo.commentAuthor.memberID != payload.userWorkspaces.first(where: {
+                                                    $0.workspaceID == event.eventData.workspaceID
+                                                })?.memberID {
+                                                    _ = req.apns.send(
+                                                        .init(title: "Swifty Trickle", body: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to you."),
+                                                        to: payload.deviceToken
+                                                    )
+                                                }
+                                            default:
+                                                break
+                                        }
+                                    default:
+                                        break
+                                }
                             }
                         }
-                    }
+                        
+                    case .connectSuccess(let data):
+                        guard let data = data.data?.first else {
+                            print("invalid data")
+                            return
+                        }
+                        configs = data
+                        do {
+                            for workspaceInfo in payload.userWorkspaces {
+                                // join room
+                                try self.joinWorkspace(trickleToken: payload.trickleToken,
+                                                             deviceToken: payload.deviceToken,
+                                                             workspaceInfo: workspaceInfo)
+                            }
+                            
+                            // hello interval
+                            let helloData = try [
+                                "id": UUID().uuidString,
+                                "action" : "message",
+                                "path": "connect_hello",
+                                "data" : [
+                                    "userId": payload.userID,
+                                    "isVisible": "false",
+                                ] as [String : Any]
+                            ].data()
+                            guard let helloText = String(data: helloData, encoding: .utf8) else {
+                                print("invalid helloData")
+                                break
+                            }
+                            DispatchQueue.main.async {
+                                let timer = Timer.scheduledTimer(withTimeInterval: Double(configs?.helloInterval ?? 180), repeats: true) { _ in
+                                    print("send hello", helloText)
+                                    ws.send(helloText)
+                                }
+                                self.devicesTimers[payload.deviceToken]?.helloInterval = timer
+                            }
+                        } catch {
+                            dump(error)
+                        }
+                        
+                    case .joinRoomAck(let data):
+//                        print(self.devicesWorkspacesInfo[payload.deviceToken], data.data?.first?.roomID)
+                        guard let roomID = data.data?.first?.roomID,
+                            let workspaceID = roomID.components(separatedBy: ":").last,
+                              let memberID = self.devicesWorkspacesInfo[payload.deviceToken]?.first(where: {$0.workspaceID == workspaceID})?.memberID else { break }
+                        
+                        /// 开启`room_status_hello`机制
+                        do {
+                            let roomStatusData = try [
+                                "id": UUID().uuidString,
+                                "action" : "message",
+                                "path": "room_status",
+                                "data" : [
+                                    "roomId" : roomID,
+                                    "memberId" : memberID,
+                                    "status" : [ "mode" : "offline" ] as [String : Any],
+                                ] as [String : Any]
+                            ].data()
+                            guard let roomStatusText = String(data: roomStatusData, encoding: .utf8) else {
+                                print("invalid helloData")
+                                break
+                            }
+                            DispatchQueue.main.async {
+                                let timer = Timer.scheduledTimer(withTimeInterval: Double(configs?.roomStatusHelloInterval ?? 180), repeats: true) { _ in
+                                    print("join roomStatus")
+                                    ws.send(roomStatusText)
+                                }
+                                self.devicesTimers[payload.deviceToken]?.roomStatus[workspaceID] = timer
+                            }
+                        } catch {
+                            dump(error)
+                        }
+                        
+                    default:
+                        break
                 }
             }
         }
+    }
+}
+
+
+extension SocketForte {
+    func joinWorkspace(trickleToken: String,
+                       deviceToken: String,
+                       workspaceInfo: RegisterPayload.UserWorkspaceRepresentable) throws {
+        
+        if let index = devicesWorkspacesInfo[deviceToken]?.firstIndex(where: {$0 == workspaceInfo}) {
+            devicesWorkspacesInfo[deviceToken]?[index] = workspaceInfo
+        } else {
+            devicesWorkspacesInfo[deviceToken]?.append(workspaceInfo)
+        }
+        
+        let ws = devicesSocketPool[deviceToken]
+        let joinRoomData = try [
+            "id": UUID().uuidString,
+            "action" : "message",
+            "path": "join_room",
+            "data" : [
+                "roomId": "workspace:\(workspaceInfo.workspaceID)",
+                "memberId": workspaceInfo.memberID,
+                "status": [ "mode" : "offline"],
+            ] as [String : Any],
+            "authorization" : "Bearer \(trickleToken)",
+            "meta": ["version": "Swifty Trickle Push Notification Helper"]
+        ].data()
+        guard let joinRoomText = String(data: joinRoomData, encoding: .utf8) else { return }
+        print(joinRoomText)
+        ws?.send(joinRoomText)
+        
+        self.devicesEnabledStates[deviceToken]?.updateValue(true, forKey: workspaceInfo.workspaceID)
+    }
+    
+    func leaveWorkspace(deviceToken: String,
+                        workspaceInfo: RegisterPayload.UserWorkspaceRepresentable) throws {
+        let ws = devicesSocketPool[deviceToken]
+        let data = try [
+            "id": UUID().uuidString,
+            "action" : "message",
+            "path": "leave_room",
+            "data" : [
+                "roomId": "workspace:\(workspaceInfo.workspaceID)",
+                "memberId": workspaceInfo.memberID,
+                "status": [ "mode" : "offline"],
+            ] as [String : Any],
+        ].data()
+        guard let leaveRoomText = String(data: data, encoding: .utf8) else { return }
+        ws?.send(leaveRoomText)
+        self.devicesEnabledStates[deviceToken]?
+            .updateValue(false, forKey: workspaceInfo.workspaceID)
+        devicesWorkspacesInfo[deviceToken]?.removeAll(where: {$0.workspaceID == workspaceInfo.workspaceID})
+    }
+    
+    func connectToServer(_ ws: WebSocket, userID: UserInfo.UserData.ID, trickleToken: String, deviceToken: String) throws {
+        let data = try [
+            "id": UUID().uuidString,
+            "action": "message",
+            "path": "connect",
+            "authorization": "Bearer \(trickleToken)"
+        ].data()
+        guard let connectText = String(data: data, encoding: .utf8) else { return }
+        print(connectText)
+        ws.send(connectText)
     }
 }

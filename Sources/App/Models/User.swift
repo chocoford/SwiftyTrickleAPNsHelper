@@ -9,29 +9,21 @@ import Foundation
 import Fluent
 
 final class User: Model {
-    // Name of the table or collection.
     static let schema = "users"
 
-    // Unique identifier for this Planet.
-    @ID(key: .id)
-    var id: UUID?
+    @ID(custom: "id", generatedBy: .user)
+    var id: String?
 
-    @Field(key: "user_id")
-    var userID: String
-    
     @Field(key: "token")
     var token: String
 
     @Children(for: \.$user)
-    var workspaces: [UserWorkspace]
+    var devices: [UserDevice]
     
-    // Creates a new, empty Planet.
     init() { }
 
-    // Creates a new Planet with all properties set.
-    init(id: UUID? = nil, userID: String, token: String) {
+    init(id: String, token: String) {
         self.id = id
-        self.userID = userID
         self.token = token
     }
 }

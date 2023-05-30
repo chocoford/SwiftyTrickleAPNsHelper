@@ -31,5 +31,7 @@ enum Entrypoint {
         
         try await configure(app)
         try await app.runFromAsyncMainEntrypoint()
+        
+
     }
 }

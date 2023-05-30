@@ -1,16 +1,16 @@
 import Fluent
 
-struct CreateUserWorkspace: AsyncMigration {
+struct CreateDeviceWorkspace: AsyncMigration {
     func prepare(on database: Database) async throws {
-        try await database.schema("user_workspaces")
+        try await database.schema(DeviceWorkspace.schema)
             .id()
             .field("workspace_id", .string, .required)
             .field("member_id", .string, .required)
-            .field("user_id", .uuid, .references("users", "id"))
+            .field("device_token", .string, .references(UserDevice.schema, "id"))
             .create()
     }
 
     func revert(on database: Database) async throws {
-        try await database.schema("user_workspaces").delete()
+        try await database.schema(DeviceWorkspace.schema).delete()
     }
 }

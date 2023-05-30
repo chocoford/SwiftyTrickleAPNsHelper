@@ -8,9 +8,9 @@
 import Foundation
 import Fluent
 
-final class UserWorkspace: Model {
+final class DeviceWorkspace: Model {
     // Name of the table or collection.
-    static let schema = "user_workspaces"
+    static let schema = "device_workspaces"
 
     // Unique identifier for this Planet.
     @ID(key: .id)
@@ -24,8 +24,8 @@ final class UserWorkspace: Model {
     @Field(key: "member_id")
     var memberID: String
     
-    @Parent(key: "user_id")
-    var user: User
+    @Parent(key: "device_token")
+    var device: UserDevice
     
     // Creates a new, empty Planet.
     init() { }

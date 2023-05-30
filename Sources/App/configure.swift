@@ -21,12 +21,21 @@ public func configure(_ app: Application) async throws {
         environment: ProcessInfo.processInfo.environment["APNS_ENV"] == "production" ? .production : .sandbox
     )
     
-    app.databases.use(.sqlite(.memory), as: .sqlite)
+    app.databases.use(.sqlite(.file("db.sqlite")), as: .sqlite)
 
-    app.migrations.add(CreateTodo())
     app.migrations.add(CreateUser())
-    app.migrations.add(CreateUserWorkspace())
+    app.migrations.add(CreateUserDevice())
+    app.migrations.add(CreateDeviceWorkspace())
     
     // register routes
     try routes(app)
+    
+
+    DispatchQueue.main.asyncAfter(deadline: .now().advanced(by: .seconds(5))) {
+        Task {
+//            _ = try? await app.client.post("http://127.0.0.1/users/broadcast")
+            _ = try? await app.client.post("http://127.0.0.1/users/register_all")
+        }
+    }
+    
 }

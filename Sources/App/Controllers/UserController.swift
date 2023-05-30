@@ -81,6 +81,7 @@ struct UserController: RouteCollection {
     }
     
     func registerAll(req: Request) async throws -> HTTPStatus {
+        print(req.headers.description)
         guard req.remoteAddress?.ipAddress == "127.0.0.1" else { return .badGateway }
 
         let devices = try await UserDevice

@@ -171,7 +171,7 @@ class SocketForte {
                                                     $0.workspaceID == event.eventData.workspaceID
                                                 })?.memberID {
                                                     _ = req.apns.send(
-                                                        .init(title: "Swifty Trickle", body: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to you."),
+                                                        .init(title: "Swifty Trickle", body: "\(event.eventData.commentInfo.commentAuthor.name) leaves a comment to \(event.eventData.title)."),
                                                         to: payload.deviceToken
                                                     )
                                                 }

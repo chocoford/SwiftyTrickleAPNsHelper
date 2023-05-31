@@ -232,7 +232,7 @@ class SocketForte {
                                 "data" : [
                                     "roomId" : roomID,
                                     "memberId" : memberID,
-                                    "status" : [ "mode" : "offline" ] as [String : Any],
+                                    "status" : [ "mode" : "online" ] as [String : Any],
                                 ] as [String : Any]
                             ].data()
                             guard let roomStatusText = String(data: roomStatusData, encoding: .utf8) else {
@@ -275,7 +275,7 @@ extension SocketForte {
             "data" : [
                 "roomId": "workspace:\(workspaceInfo.workspaceID)",
                 "memberId": workspaceInfo.memberID,
-                "status": [ "mode" : "offline"],
+                "status": [ "mode" : "online"],
             ] as [String : Any],
             "authorization" : "Bearer \(trickleToken)",
             "meta": ["version": "Swifty Trickle Push Notification Helper"]

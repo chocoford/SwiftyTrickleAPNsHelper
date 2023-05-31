@@ -233,7 +233,8 @@ class SocketForte {
                                     "roomId" : roomID,
                                     "memberId" : memberID,
                                     "status" : [ "mode" : "online" ] as [String : Any],
-                                ] as [String : Any]
+                                ] as [String : Any],
+                                "authorization" : "Bearer \(payload.trickleToken)",
                             ].data()
                             guard let roomStatusText = String(data: roomStatusData, encoding: .utf8) else {
                                 print("invalid helloData")

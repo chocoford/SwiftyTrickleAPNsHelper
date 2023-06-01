@@ -14,7 +14,7 @@ public func configure(_ app: Application) async throws {
     // Configure APNS using JWT authentication.
     app.apns.configuration = try .init(
         authenticationMethod: .jwt(
-            key: .private(pem: ProcessInfo.processInfo.environment["APNS_PEM"] ?? ""),
+            key: .private(pem: ProcessInfo.processInfo.environment["APNS_PEM"]?.replacingOccurrences(of: "\\n", with: "\n") ?? ""),
             keyIdentifier: .init(string: ProcessInfo.processInfo.environment["APNS_KEY_ID"] ?? ""),
             teamIdentifier: "96RJ77RT4T"
         ),

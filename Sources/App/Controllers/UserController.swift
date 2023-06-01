@@ -63,6 +63,7 @@ struct UserController: RouteCollection {
             let theWorkspace = try await DeviceWorkspace
                 .query(on: req.db)
                 .filter(\.$workspaceID == workspace.workspaceID)
+                .filter(\.$memberID == workspace.memberID)
                 .first()
             
             if let theWorkspace = theWorkspace {

@@ -11,6 +11,8 @@ public func configure(_ app: Application) async throws {
     // uncomment to serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     
+    print(ProcessInfo.processInfo.environment["APNS_PEM"]?.replacingOccurrences(of: "\\n", with: "\n") ?? "no APNS_PEM")
+    
     // Configure APNS using JWT authentication.
     app.apns.configuration = try .init(
         authenticationMethod: .jwt(
